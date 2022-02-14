@@ -16,71 +16,71 @@ import java.util.function.BooleanSupplier;
 /**
  * This class provides an easy way to link commands to inputs.
  *
- * <p>It is very easy to link a button to a command. For instance, you could link the EventListener button
+ * <p>It is very easy to link a button to a command. For instance, you could link the BooleanEvent button
  * of a joystick to a "score" command.
  *
- * <p>It is encouraged that teams write a subclass of EventListener if they want to have something unusual
+ * <p>It is encouraged that teams write a subclass of BooleanEvent if they want to have something unusual
  * (for instance, if they want to react to the user holding a button while the robot is reading a
- * certain sensor input). For this, they only have to write the {@link EventListener#get()} method to get
- * the full functionality of the EventListener class.
+ * certain sensor input). For this, they only have to write the {@link BooleanEvent#get()} method to get
+ * the full functionality of the BooleanEvent class.
  *
  * <p>This class is provided by the NewCommands VendorDep
  */
-public class EventListener implements BooleanSupplier {
-  private final BooleanSupplier m_condition;
+public class BooleanEvent implements BooleanSupplier {
+  private final BooleanSupplier m_eventSupplier;
 
   /**
-   * Creates a new EventListener that monitors the given condition.
+   * Creates a new BooleanEvent that monitors the given condition.
    *
-   * @param condition the condition the EventListener should monitor.
+   * @param eventSupplier the condition the BooleanEvent should monitor.
    */
-  public EventListener(BooleanSupplier condition) {
-    m_condition = condition;
+  public BooleanEvent(BooleanSupplier eventSupplier) {
+    m_eventSupplier = eventSupplier;
   }
 
   /**
-   * Creates a new EventListener that is always false. Useful only as a no-arg constructor for
-   * subclasses that will be overriding {@link EventListener#get()} anyway.
+   * Creates a new BooleanEvent that is always false. Useful only as a no-arg constructor for
+   * subclasses that will be overriding {@link BooleanEvent#get()} anyway.
    */
-  public EventListener() {
-    m_condition = () -> false;
+  public BooleanEvent() {
+    m_eventSupplier = () -> false;
   }
 
   /**
-   * Returns whether or not the EventListener's condition is true.
+   * Returns whether or not the BooleanEvent's condition is true.
    *
-   * <p>This method will be called repeatedly when a command is linked to the EventListener.
+   * <p>This method will be called repeatedly when a command is linked to the BooleanEvent.
    *
-   * <p>Functionally identical to {@link EventListener#getAsBoolean()}.
+   * <p>Functionally identical to {@link BooleanEvent#getAsBoolean()}.
    *
-   * @return whether or not the EventListener condition is true.
+   * @return whether or not the BooleanEvent condition is true.
    */
   public boolean get() {
     return this.getAsBoolean();
   }
 
 /**
-   * Returns whether or not the EventListener's condition is true.
+   * Returns whether or not the BooleanEvent's condition is true.
    *
-   * <p>This method will be called repeatedly when a command is linked to the EventListener.
+   * <p>This method will be called repeatedly when a command is linked to the BooleanEvent.
    *
-   * <p>Functionally identical to {@link EventListener#get()}.
+   * <p>Functionally identical to {@link BooleanEvent#get()}.
    *
-   * @return whether or not the EventListener condition is true.
+   * @return whether or not the BooleanEvent condition is true.
    */
   @Override
   public boolean getAsBoolean() {
-    return m_condition.getAsBoolean();
+    return m_eventSupplier.getAsBoolean();
   }
 
   /**
-   * Starts the given command whenever the EventListener's condition just becomes true.
+   * Starts the given command whenever the BooleanEvent's condition just becomes true.
    *
    * @param command the command to start
    * @param interruptible whether the command is interruptible
-   * @return this EventListener, so calls can be chained
+   * @return this BooleanEvent, so calls can be chained
    */
-  public EventListener onTrue(final Command command, boolean interruptible) {
+  public BooleanEvent onTrue(final Command command, boolean interruptible) {
     requireNonNullParam(command, "command", "onTrue");
 
     CommandScheduler.getInstance()
@@ -104,24 +104,24 @@ public class EventListener implements BooleanSupplier {
   }
 
   /**
-   * Starts the given command whenever the EventListener's condition just becomes true. The command is set to be
+   * Starts the given command whenever the BooleanEvent's condition just becomes true. The command is set to be
    * interruptible.
    *
    * @param command the command to start
-   * @return this EventListener, so calls can be chained
+   * @return this BooleanEvent, so calls can be chained
    */
-  public EventListener onTrue(final Command command) {
+  public BooleanEvent onTrue(final Command command) {
     return onTrue(command, true);
   }
 
   /**
-   * Runs the given runnable whenever the EventListener's condition just becomes true.
+   * Runs the given runnable whenever the BooleanEvent's condition just becomes true.
    *
    * @param toRun the runnable to run
    * @param requirements the required subsystems
-   * @return this EventListener, so calls can be chained
+   * @return this BooleanEvent, so calls can be chained
    */
-  public EventListener onTrue(final Runnable toRun, Subsystem... requirements) {
+  public BooleanEvent onTrue(final Runnable toRun, Subsystem... requirements) {
     return onTrue(new InstantCommand(toRun, requirements));
   }
 
@@ -133,9 +133,9 @@ public class EventListener implements BooleanSupplier {
    *
    * @param command the command to start
    * @param interruptible whether the command is interruptible
-   * @return this EventListener, so calls can be chained
+   * @return this BooleanEvent, so calls can be chained
    */
-  public EventListener whileTrueContinuous(final Command command, boolean interruptible) {
+  public BooleanEvent whileTrueContinuous(final Command command, boolean interruptible) {
     requireNonNullParam(command, "command", "whileTrueContinuous");
 
     CommandScheduler.getInstance()
@@ -166,9 +166,9 @@ public class EventListener implements BooleanSupplier {
    * will be canceled when the condition becomes false. The command is set to be interruptible.
    *
    * @param command the command to start
-   * @return this EventListener, so calls can be chained
+   * @return this BooleanEvent, so calls can be chained
    */
-  public EventListener whileTrueContinuous(final Command command) {
+  public BooleanEvent whileTrueContinuous(final Command command) {
     return whileTrueContinuous(command, true);
   }
 
@@ -177,9 +177,9 @@ public class EventListener implements BooleanSupplier {
    *
    * @param toRun the runnable to run
    * @param requirements the required subsystems
-   * @return this EventListener, so calls can be chained
+   * @return this BooleanEvent, so calls can be chained
    */
-  public EventListener whileTrueContinuous(final Runnable toRun, Subsystem... requirements) {
+  public BooleanEvent whileTrueContinuous(final Runnable toRun, Subsystem... requirements) {
     return whileTrueContinuous(new InstantCommand(toRun, requirements));
   }
 
@@ -189,9 +189,9 @@ public class EventListener implements BooleanSupplier {
    *
    * @param command the command to start
    * @param interruptible whether the command is interruptible
-   * @return this EventListener, so calls can be chained
+   * @return this BooleanEvent, so calls can be chained
    */
-  public EventListener whileTrueOnce(final Command command, boolean interruptible) {
+  public BooleanEvent whileTrueOnce(final Command command, boolean interruptible) {
     requireNonNullParam(command, "command", "whileTrueOnce");
 
     CommandScheduler.getInstance()
@@ -220,9 +220,9 @@ public class EventListener implements BooleanSupplier {
    * false, but does not re-start it in-between. The command is set to be interruptible.
    *
    * @param command the command to start
-   * @return this EventListener, so calls can be chained
+   * @return this BooleanEvent, so calls can be chained
    */
-  public EventListener whileTrueOnce(final Command command) {
+  public BooleanEvent whileTrueOnce(final Command command) {
     return whileTrueOnce(command, true);
   }
 
@@ -231,9 +231,9 @@ public class EventListener implements BooleanSupplier {
    *
    * @param command the command to start
    * @param interruptible whether the command is interruptible
-   * @return this EventListener, so calls can be chained
+   * @return this BooleanEvent, so calls can be chained
    */
-  public EventListener onFalse(final Command command, boolean interruptible) {
+  public BooleanEvent onFalse(final Command command, boolean interruptible) {
     requireNonNullParam(command, "command", "onFalse");
 
     CommandScheduler.getInstance()
@@ -259,9 +259,9 @@ public class EventListener implements BooleanSupplier {
    * Starts the command when the condition becomes false. The command is set to be interruptible.
    *
    * @param command the command to start
-   * @return this EventListener, so calls can be chained
+   * @return this BooleanEvent, so calls can be chained
    */
-  public EventListener onFalse(final Command command) {
+  public BooleanEvent onFalse(final Command command) {
     return onFalse(command, true);
   }
 
@@ -270,9 +270,9 @@ public class EventListener implements BooleanSupplier {
    *
    * @param toRun the runnable to run
    * @param requirements the required subsystems
-   * @return this EventListener, so calls can be chained
+   * @return this BooleanEvent, so calls can be chained
    */
-  public EventListener onFalse(final Runnable toRun, Subsystem... requirements) {
+  public BooleanEvent onFalse(final Runnable toRun, Subsystem... requirements) {
     return onFalse(new InstantCommand(toRun, requirements));
   }
 
@@ -281,9 +281,9 @@ public class EventListener implements BooleanSupplier {
    *
    * @param command the command to toggle
    * @param interruptible whether the command is interruptible
-   * @return this EventListener, so calls can be chained
+   * @return this BooleanEvent, so calls can be chained
    */
-  public EventListener toggleOnTrue(final Command command, boolean interruptible) {
+  public BooleanEvent toggleOnTrue(final Command command, boolean interruptible) {
     requireNonNullParam(command, "command", "toggleOnTrue");
 
     CommandScheduler.getInstance()
@@ -313,9 +313,9 @@ public class EventListener implements BooleanSupplier {
    * Toggles a command when the condition becomes true. The command is set to be interruptible.
    *
    * @param command the command to toggle
-   * @return this EventListener, so calls can be chained
+   * @return this BooleanEvent, so calls can be chained
    */
-  public EventListener toggleOnTrue(final Command command) {
+  public BooleanEvent toggleOnTrue(final Command command) {
     return toggleOnTrue(command, true);
   }
 
@@ -323,9 +323,9 @@ public class EventListener implements BooleanSupplier {
    * Cancels a command when the condition becomes true.
    *
    * @param command the command to cancel
-   * @return this EventListener, so calls can be chained
+   * @return this BooleanEvent, so calls can be chained
    */
-  public EventListener cancelOnTrue(final Command command) {
+  public BooleanEvent cancelOnTrue(final Command command) {
     requireNonNullParam(command, "command", "cancelOnTrue");
 
     CommandScheduler.getInstance()
@@ -348,58 +348,58 @@ public class EventListener implements BooleanSupplier {
   }
 
   /**
-   * Composes this EventListener with another EventListener, returning a new EventListener that is true when both
-   * EventListeners are true.
+   * Composes this BooleanEvent with another BooleanEvent, returning a new BooleanEvent that is true when both
+   * BooleanEvents are true.
    *
-   * @param eventListener the EventListener to compose with
-   * @return the EventListener that is true when both EventListeners are true
+   * @param eventListener the BooleanEvent to compose with
+   * @return the BooleanEvent that is true when both BooleanEvents are true
    */
-  public EventListener and(EventListener eventListener) {
-    return new EventListener(() -> get() && eventListener.get());
+  public BooleanEvent and(BooleanEvent eventListener) {
+    return new BooleanEvent(() -> get() && eventListener.get());
   }
 
   /**
-   * Composes this EventListener with another EventListener, returning a new EventListener that is true when either
-   * EventListener is true.
+   * Composes this BooleanEvent with another BooleanEvent, returning a new BooleanEvent that is true when either
+   * BooleanEvent is true.
    *
-   * @param eventListener the EventListener to compose with
-   * @return the EventListener that is true when either EventListener is true
+   * @param eventListener the BooleanEvent to compose with
+   * @return the BooleanEvent that is true when either BooleanEvent is true
    */
-  public EventListener or(EventListener eventListener) {
-    return new EventListener(() -> get() || eventListener.get());
+  public BooleanEvent or(BooleanEvent eventListener) {
+    return new BooleanEvent(() -> get() || eventListener.get());
   }
 
   /**
-   * Creates a new EventListener that is true when this EventListener is false, i.e. that acts as the
-   * negation of this EventListener.
+   * Creates a new BooleanEvent that is true when this BooleanEvent is false, i.e. that acts as the
+   * negation of this BooleanEvent.
    *
-   * @return the negated EventListener
+   * @return the negated BooleanEvent
    */
-  public EventListener negate() {
-    return new EventListener(() -> !get());
+  public BooleanEvent negate() {
+    return new BooleanEvent(() -> !get());
   }
 
   /**
-   * Creates a new debounced EventListener from this EventListener - it will become true when this EventListener has
+   * Creates a new debounced BooleanEvent from this BooleanEvent - it will become true when this BooleanEvent has
    * been true for longer than the specified period.
    *
    * @param seconds The debounce period.
-   * @return The debounced EventListener (rising edges debounced only)
+   * @return The debounced BooleanEvent (rising edges debounced only)
    */
-  public EventListener debounce(double seconds) {
+  public BooleanEvent debounce(double seconds) {
     return debounce(seconds, Debouncer.DebounceType.kRising);
   }
 
   /**
-   * Creates a new debounced EventListener from this EventListener - it will become true when this EventListener has
+   * Creates a new debounced BooleanEvent from this BooleanEvent - it will become true when this BooleanEvent has
    * been true for longer than the specified period.
    *
    * @param seconds The debounce period.
    * @param type The debounce type.
-   * @return The debounced EventListener.
+   * @return The debounced BooleanEvent.
    */
-  public EventListener debounce(double seconds, Debouncer.DebounceType type) {
-    return new EventListener(
+  public BooleanEvent debounce(double seconds, Debouncer.DebounceType type) {
+    return new BooleanEvent(
         new BooleanSupplier() {
           Debouncer m_debouncer = new Debouncer(seconds, type);
 
