@@ -12,6 +12,7 @@ import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.Subsystem;
 import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
 
 /**
  * This class provides an easy way to link commands to inputs.
@@ -82,24 +83,11 @@ public class BooleanEvent implements BooleanSupplier {
    */
   public BooleanEvent onTrue(final Command command, boolean interruptible) {
     requireNonNullParam(command, "command", "onTrue");
-
-    CommandScheduler.getInstance()
-        .addButton(
-            new Runnable() {
-              private boolean m_pressedLast = get();
-
-              @Override
-              public void run() {
-                boolean pressed = get();
-
-                if (!m_pressedLast && pressed) {
-                  command.schedule(interruptible);
-                }
-
-                m_pressedLast = pressed;
-              }
-            });
-
+    onChange(state -> {
+      if(state) {
+        command.schedule(interruptible);
+      }
+    });
     return this;
   }
 
@@ -138,24 +126,12 @@ public class BooleanEvent implements BooleanSupplier {
   public BooleanEvent whileTrueContinuous(final Command command, boolean interruptible) {
     requireNonNullParam(command, "command", "whileTrueContinuous");
 
-    CommandScheduler.getInstance()
-        .addButton(
-            new Runnable() {
-              private boolean m_pressedLast = get();
-
-              @Override
-              public void run() {
-                boolean pressed = get();
-
-                if (pressed) {
-                  command.schedule(interruptible);
-                } else if (m_pressedLast) {
-                  command.cancel();
-                }
-
-                m_pressedLast = pressed;
-              }
-            });
+    whileTrue(()->{command.schedule(interruptible);});
+    onChange(state -> {
+      if (!state) {
+        command.cancel();
+      }
+    });
     return this;
   }
 
@@ -193,25 +169,14 @@ public class BooleanEvent implements BooleanSupplier {
    */
   public BooleanEvent whileTrueOnce(final Command command, boolean interruptible) {
     requireNonNullParam(command, "command", "whileTrueOnce");
-
-    CommandScheduler.getInstance()
-        .addButton(
-            new Runnable() {
-              private boolean m_pressedLast = get();
-
-              @Override
-              public void run() {
-                boolean pressed = get();
-
-                if (!m_pressedLast && pressed) {
-                  command.schedule(interruptible);
-                } else if (m_pressedLast && !pressed) {
-                  command.cancel();
-                }
-
-                m_pressedLast = pressed;
-              }
-            });
+    whileTrue(() -> {
+      command.schedule(interruptible);
+    });
+    onChange(state -> {
+      if(!state) {
+        command.cancel();
+      }
+    });
     return this;
   }
 
@@ -235,23 +200,11 @@ public class BooleanEvent implements BooleanSupplier {
    */
   public BooleanEvent onFalse(final Command command, boolean interruptible) {
     requireNonNullParam(command, "command", "onFalse");
-
-    CommandScheduler.getInstance()
-        .addButton(
-            new Runnable() {
-              private boolean m_pressedLast = get();
-
-              @Override
-              public void run() {
-                boolean pressed = get();
-
-                if (m_pressedLast && !pressed) {
-                  command.schedule(interruptible);
-                }
-
-                m_pressedLast = pressed;
-              }
-            });
+    onChange(state -> {
+      if(!state) {
+        command.schedule(interruptible);
+      }
+    });
     return this;
   }
 
@@ -286,26 +239,15 @@ public class BooleanEvent implements BooleanSupplier {
   public BooleanEvent toggleOnTrue(final Command command, boolean interruptible) {
     requireNonNullParam(command, "command", "toggleOnTrue");
 
-    CommandScheduler.getInstance()
-        .addButton(
-            new Runnable() {
-              private boolean m_pressedLast = get();
-
-              @Override
-              public void run() {
-                boolean pressed = get();
-
-                if (!m_pressedLast && pressed) {
-                  if (command.isScheduled()) {
-                    command.cancel();
-                  } else {
-                    command.schedule(interruptible);
-                  }
-                }
-
-                m_pressedLast = pressed;
-              }
-            });
+    onChange(state -> {
+      if (state) {
+        if (command.isScheduled()) {
+          command.cancel();
+        } else {
+          command.schedule(interruptible);
+        }
+      }
+    });
     return this;
   }
 
@@ -327,25 +269,88 @@ public class BooleanEvent implements BooleanSupplier {
    */
   public BooleanEvent cancelOnTrue(final Command command) {
     requireNonNullParam(command, "command", "cancelOnTrue");
+    onChange(
+      state -> {
+        if(state) {
+          command.cancel();
+        }
+      }
+    );
+    return this;
+  }
 
+  /**
+   * Constantly runs the given Runnable when the BooleanEvent is true.
+   * 
+   * <p>This method does not schedule Commands or handle Subsystem requirements. 
+   * When working in a command-based context, use {@link BooleanEvent#whileTrueContinuous(Runnable toRun, Subsystem... requirements)}
+   * @param handle the Runnable to run
+   * @return this BooleanEvent, so calls can be chained
+   */
+  public BooleanEvent whileTrue(Runnable handle) {
+    requireNonNullParam(handle, "handle", "whileTrue");
     CommandScheduler.getInstance()
         .addButton(
             new Runnable() {
-              private boolean m_pressedLast = get();
-
               @Override
               public void run() {
-                boolean pressed = get();
-
-                if (!m_pressedLast && pressed) {
-                  command.cancel();
+                if (get()) {
+                  handle.run();
                 }
-
-                m_pressedLast = pressed;
               }
             });
     return this;
   }
+
+  /**
+   * Constantly runs the given Runnable when the BooleanEvent is false.
+   * 
+   * @param handle the Runnable to run
+   * @return this BooleanEvent, so calls can be chained
+   */
+  public BooleanEvent whileFalse(Runnable handle) {
+    requireNonNullParam(handle, "handle", "whileFalse");
+    CommandScheduler.getInstance()
+        .addButton(
+            new Runnable() {
+              @Override
+              public void run() {
+                if (!get()) {
+                  handle.run();
+                }
+              }
+            });
+    return this;
+  }
+
+  /**
+   * Runs the given Consumer when this BooleanEvent changes state between true and false.
+   * 
+   * @param handle the Consumer to run, which accepts the new state
+   * @return this BooleanEvent, so calls can be chained
+   */
+  public BooleanEvent onChange(Consumer<Boolean> handle) {
+    requireNonNullParam(handle, "handle", "onChange");
+    CommandScheduler.getInstance()
+        .addButton(
+            new Runnable() {
+              private boolean m_stateLast = get();
+
+              @Override
+              public void run() {
+                boolean state = get();
+
+                if (m_stateLast != state) {
+                  handle.accept(state);
+                }
+
+                m_stateLast = state;
+              }
+            });
+
+    return this;
+  }
+  
 
   /**
    * Composes this BooleanEvent with another BooleanEvent, returning a new BooleanEvent that is true when both
