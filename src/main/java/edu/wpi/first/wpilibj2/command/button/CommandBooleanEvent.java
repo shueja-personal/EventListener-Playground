@@ -18,13 +18,8 @@ import java.util.function.BooleanSupplier;
 /**
  * This class provides an easy way to link commands to boolean inputs such as joystick buttons, limit switches, or robot status.
  *
- * <p>It is very easy to link an event to a command. For instance, you could link the BooleanEvent button
+ * <p>It is very easy to link an event to a command. For instance, you could link a button
  * of a joystick to a "score" command.
- *
- * <p>It is encouraged that teams write a subclass of BooleanEvent if they want to have something unusual
- * (for instance, if they want to react to the user holding a button while the robot is reading a
- * certain sensor input). For this, they only have to write the {@link CommandBooleanEvent#get()} method to get
- * the full functionality of the BooleanEvent class.
  *
  * <p>This class is provided by the NewCommands VendorDep
  */
@@ -70,6 +65,29 @@ public class CommandBooleanEvent extends BooleanEvent {
     return this;
   }
 
+  public CommandBooleanEvent onTrue(final Runnable toRun, Subsystem... requirements) {
+    onTrue(new InstantCommand(toRun, requirements));
+    return this;
+  }
+
+  @Override
+  public CommandBooleanEvent onTrue(final Runnable toRun) {
+    onTrue(toRun, new Subsystem[0]);
+    return this;
+  }
+
+  public CommandBooleanEvent whileTrueOnce(final Runnable toRun, Subsystem... requirements) {
+    whileTrueOnce(new InstantCommand(toRun, requirements));
+    return this;
+  }
+
+  public CommandBooleanEvent whileTrueOnce(final Runnable toRun) {
+    whileTrueOnce(toRun, new Subsystem[0]);
+    return this;
+  }
+
+
+
   /**
    * Starts the given command whenever the BooleanEvent becomes true. 
    * 
@@ -80,7 +98,7 @@ public class CommandBooleanEvent extends BooleanEvent {
    */
   public CommandBooleanEvent onTrue(final Command command) {
     requireNonNullParam(command, "command", "onTrue");
-    onTrue(()->{
+    super.onTrue(()->{
       if (!command.isScheduled()) {
         command.schedule();
       }
@@ -159,7 +177,7 @@ public class CommandBooleanEvent extends BooleanEvent {
    */
   public CommandBooleanEvent toggleOnTrue(final Command command) {
     requireNonNullParam(command, "command", "toggleOnTrue");
-    onTrue(
+    super.onTrue(
       ()->{
         if (command.isScheduled()) {
           command.cancel();
@@ -179,7 +197,7 @@ public class CommandBooleanEvent extends BooleanEvent {
    */
   public CommandBooleanEvent cancelOnTrue(final Command command) {
     requireNonNullParam(command, "command", "cancelOnTrue");
-    onTrue(
+    super.onTrue(
       ()-> {
         if (command.isScheduled()) {
           command.cancel();
