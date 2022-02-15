@@ -74,44 +74,62 @@ public class BooleanEvent implements BooleanSupplier {
     return m_eventSupplier.getAsBoolean();
   }
 
+  /* BINDING TO TRUE */
+
   /**
    * Starts the given command whenever the BooleanEvent's condition just becomes true.
    *
    * @param command the command to start
-   * @param interruptible whether the command is interruptible
+   * @param interruptOnFalse whether the command should be interrupted when the condition later becomes false.
    * @return this BooleanEvent, so calls can be chained
    */
-  public BooleanEvent onTrue(final Command command, boolean interruptible) {
+  public BooleanEvent onTrue(final Command command, boolean interruptOnFalse) {
     requireNonNullParam(command, "command", "onTrue");
     onChange(state -> {
       if(state) {
-        command.schedule(interruptible);
+        command.schedule();
+      } else if (interruptOnFalse) {
+        command.cancel();
       }
     });
     return this;
   }
 
   /**
-   * Starts the given command whenever the BooleanEvent's condition just becomes true. The command is set to be
-   * interruptible.
+   * Starts the given command whenever the BooleanEvent's condition just becomes true. The command will not be interrupted if the BooleanEvent later becomes false.
    *
    * @param command the command to start
    * @return this BooleanEvent, so calls can be chained
    */
   public BooleanEvent onTrue(final Command command) {
-    return onTrue(command, true);
+    return onTrue(command, false);
   }
 
   /**
-   * Runs the given runnable whenever the BooleanEvent's condition just becomes true.
+   * Runs the given Runnable whenever the BooleanEvent's condition just becomes true.
    *
    * @param toRun the runnable to run
    * @param requirements the required subsystems
    * @return this BooleanEvent, so calls can be chained
    */
   public BooleanEvent onTrue(final Runnable toRun, Subsystem... requirements) {
-    return onTrue(new InstantCommand(toRun, requirements));
+    return onTrue(new InstantCommand(toRun, requirements), false);
   }
+
+  /**
+   * Runs the given Runnable whenever the BooleanEvent's condition just becomes true.
+   * 
+   * @param command
+   * @return
+   */
+  public BooleanEvent onTrue(final Runnable toRun) {
+     onChange(state -> {
+       if (state == true) {
+         toRun.run();
+       }
+     });
+     return this;
+   }
 
   /**
    * Constantly starts the given command while the condition is true.
@@ -123,29 +141,30 @@ public class BooleanEvent implements BooleanSupplier {
    * @param interruptible whether the command is interruptible
    * @return this BooleanEvent, so calls can be chained
    */
-  public BooleanEvent whileTrueContinuous(final Command command, boolean interruptible) {
-    requireNonNullParam(command, "command", "whileTrueContinuous");
-
-    whileTrue(()->{command.schedule(interruptible);});
-    onChange(state -> {
-      if (!state) {
-        command.cancel();
-      }
-    });
+  public BooleanEvent whileTrue(final Command command, boolean interruptOnFalse) {
+    requireNonNullParam(command, "command", "whileTrue");
+    whileTrue(()->{command.schedule();});
+    if(interruptOnFalse) {
+      onChange(state -> {
+        if (state == false) {
+          command.cancel();
+        }
+      });
+    }
     return this;
   }
 
   /**
    * Constantly starts the given command while the condition is true.
    *
-   * <p>{@link Command#schedule(boolean)} will be called repeatedly while the condition is true, and
-   * will be canceled when the condition becomes false. The command is set to be interruptible.
+   * <p>{@link Command#schedule(boolean)} will be called repeatedly while the condition is true, and the command
+   * will be canceled when the condition becomes false.
    *
    * @param command the command to start
    * @return this BooleanEvent, so calls can be chained
    */
-  public BooleanEvent whileTrueContinuous(final Command command) {
-    return whileTrueContinuous(command, true);
+  public BooleanEvent whileTrue(final Command command) {
+    return whileTrue(command, true);
   }
 
   /**
@@ -155,80 +174,31 @@ public class BooleanEvent implements BooleanSupplier {
    * @param requirements the required subsystems
    * @return this BooleanEvent, so calls can be chained
    */
-  public BooleanEvent whileTrueContinuous(final Runnable toRun, Subsystem... requirements) {
-    return whileTrueContinuous(new InstantCommand(toRun, requirements));
+  public BooleanEvent whileTrue(final Runnable toRun, Subsystem... requirements) {
+    requireNonNullParam(toRun, "command", "whileTrue");
+    return whileTrue(new InstantCommand(toRun, requirements));
   }
 
   /**
-   * Starts the given command when the condition initially becomes true, and ends it when it becomes
-   * false, but does not re-start it in-between.
-   *
-   * @param command the command to start
-   * @param interruptible whether the command is interruptible
+   * Constantly runs the given Runnable when the BooleanEvent is true.
+   * 
+   * <p>This method does not schedule Commands or handle Subsystem requirements. 
+   * When working in a command-based context, use {@link BooleanEvent#whileTrueContinuous(Runnable toRun, Subsystem... requirements)}
+   * @param toRun the Runnable to run
    * @return this BooleanEvent, so calls can be chained
    */
-  public BooleanEvent whileTrueOnce(final Command command, boolean interruptible) {
-    requireNonNullParam(command, "command", "whileTrueOnce");
-    whileTrue(() -> {
-      command.schedule(interruptible);
-    });
-    onChange(state -> {
-      if(!state) {
-        command.cancel();
+  public BooleanEvent whileTrue(final Runnable toRun) {
+    requireNonNullParam(toRun, "toRun", "whileTrue");
+    CommandScheduler.getInstance().addButton(
+      () -> {
+        if (get() == true) {
+          toRun.run();
+        }
       }
-    });
+    );
     return this;
   }
-
-  /**
-   * Starts the given command when the condition initially becomes true, and ends it when it becomes
-   * false, but does not re-start it in-between. The command is set to be interruptible.
-   *
-   * @param command the command to start
-   * @return this BooleanEvent, so calls can be chained
-   */
-  public BooleanEvent whileTrueOnce(final Command command) {
-    return whileTrueOnce(command, true);
-  }
-
-  /**
-   * Starts the command when the condition becomes false.
-   *
-   * @param command the command to start
-   * @param interruptible whether the command is interruptible
-   * @return this BooleanEvent, so calls can be chained
-   */
-  public BooleanEvent onFalse(final Command command, boolean interruptible) {
-    requireNonNullParam(command, "command", "onFalse");
-    onChange(state -> {
-      if(!state) {
-        command.schedule(interruptible);
-      }
-    });
-    return this;
-  }
-
-  /**
-   * Starts the command when the condition becomes false. The command is set to be interruptible.
-   *
-   * @param command the command to start
-   * @return this BooleanEvent, so calls can be chained
-   */
-  public BooleanEvent onFalse(final Command command) {
-    return onFalse(command, true);
-  }
-
-  /**
-   * Runs the given runnable when the condition becomes false.
-   *
-   * @param toRun the runnable to run
-   * @param requirements the required subsystems
-   * @return this BooleanEvent, so calls can be chained
-   */
-  public BooleanEvent onFalse(final Runnable toRun, Subsystem... requirements) {
-    return onFalse(new InstantCommand(toRun, requirements));
-  }
-
+  
   /**
    * Toggles a command when the condition becomes true.
    *
@@ -236,29 +206,18 @@ public class BooleanEvent implements BooleanSupplier {
    * @param interruptible whether the command is interruptible
    * @return this BooleanEvent, so calls can be chained
    */
-  public BooleanEvent toggleOnTrue(final Command command, boolean interruptible) {
+  public BooleanEvent toggleOnTrue(final Command command) {
     requireNonNullParam(command, "command", "toggleOnTrue");
-
-    onChange(state -> {
-      if (state) {
+    onTrue(
+      ()->{
         if (command.isScheduled()) {
           command.cancel();
         } else {
-          command.schedule(interruptible);
+          command.schedule();
         }
       }
-    });
+    );
     return this;
-  }
-
-  /**
-   * Toggles a command when the condition becomes true. The command is set to be interruptible.
-   *
-   * @param command the command to toggle
-   * @return this BooleanEvent, so calls can be chained
-   */
-  public BooleanEvent toggleOnTrue(final Command command) {
-    return toggleOnTrue(command, true);
   }
 
   /**
@@ -269,59 +228,16 @@ public class BooleanEvent implements BooleanSupplier {
    */
   public BooleanEvent cancelOnTrue(final Command command) {
     requireNonNullParam(command, "command", "cancelOnTrue");
-    onChange(
-      state -> {
-        if(state) {
-          command.cancel();
-        }
+    onTrue(
+      ()-> {
+        command.cancel();
       }
     );
     return this;
   }
 
-  /**
-   * Constantly runs the given Runnable when the BooleanEvent is true.
-   * 
-   * <p>This method does not schedule Commands or handle Subsystem requirements. 
-   * When working in a command-based context, use {@link BooleanEvent#whileTrueContinuous(Runnable toRun, Subsystem... requirements)}
-   * @param handle the Runnable to run
-   * @return this BooleanEvent, so calls can be chained
-   */
-  public BooleanEvent whileTrue(Runnable handle) {
-    requireNonNullParam(handle, "handle", "whileTrue");
-    CommandScheduler.getInstance()
-        .addButton(
-            new Runnable() {
-              @Override
-              public void run() {
-                if (get()) {
-                  handle.run();
-                }
-              }
-            });
-    return this;
-  }
+  /* BINDING TO FALSE */
 
-  /**
-   * Constantly runs the given Runnable when the BooleanEvent is false.
-   * 
-   * @param handle the Runnable to run
-   * @return this BooleanEvent, so calls can be chained
-   */
-  public BooleanEvent whileFalse(Runnable handle) {
-    requireNonNullParam(handle, "handle", "whileFalse");
-    CommandScheduler.getInstance()
-        .addButton(
-            new Runnable() {
-              @Override
-              public void run() {
-                if (!get()) {
-                  handle.run();
-                }
-              }
-            });
-    return this;
-  }
 
   /**
    * Runs the given Consumer when this BooleanEvent changes state between true and false.
@@ -347,11 +263,9 @@ public class BooleanEvent implements BooleanSupplier {
                 m_stateLast = state;
               }
             });
-
     return this;
   }
   
-
   /**
    * Composes this BooleanEvent with another BooleanEvent, returning a new BooleanEvent that is true when both
    * BooleanEvents are true.
