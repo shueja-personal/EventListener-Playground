@@ -85,7 +85,7 @@ public class BooleanEvent implements BooleanSupplier {
     }
   }
 
-  public void addHandler(Runnable handler) {
+  protected void addHandler(Runnable handler) {
     m_handlers.add(handler);
   }
 
