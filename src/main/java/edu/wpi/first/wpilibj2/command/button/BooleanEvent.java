@@ -7,10 +7,9 @@ package edu.wpi.first.wpilibj2.command.button;
 import static edu.wpi.first.wpilibj.util.ErrorMessages.requireNonNullParam;
 
 import edu.wpi.first.math.filter.Debouncer;
-import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.CommandScheduler;
-import edu.wpi.first.wpilibj2.command.InstantCommand;
-import edu.wpi.first.wpilibj2.command.Subsystem;
+
+import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 
@@ -29,6 +28,7 @@ import java.util.function.Consumer;
  */
 public class BooleanEvent implements BooleanSupplier {
   private final BooleanSupplier m_eventSupplier;
+  protected final Collection<Runnable> m_handlers;
 
   /**
    * Creates a new BooleanEvent that monitors the given condition.
@@ -36,7 +36,12 @@ public class BooleanEvent implements BooleanSupplier {
    * @param eventSupplier the condition the BooleanEvent should monitor.
    */
   public BooleanEvent(BooleanSupplier eventSupplier) {
+    this(eventSupplier, new LinkedHashSet<>());
+  }
+
+  protected BooleanEvent(BooleanSupplier eventSupplier, Collection<Runnable> handlers) {
     m_eventSupplier = eventSupplier;
+    m_handlers = handlers;
   }
 
   /**
@@ -44,7 +49,7 @@ public class BooleanEvent implements BooleanSupplier {
    * subclasses that will be overriding {@link BooleanEvent#get()} anyway.
    */
   public BooleanEvent() {
-    m_eventSupplier = () -> false;
+    this(()->false);
   }
 
   /**
@@ -74,10 +79,17 @@ public class BooleanEvent implements BooleanSupplier {
     return m_eventSupplier.getAsBoolean();
   }
 
-  /* RUNNABLES
-    Both for non-command usage and as helper methods for the Command binding methods.
-  */
+  public void poll() {
+    for (Runnable handler : m_handlers) {
+      handler.run();
+    }
+  }
 
+  public void addHandler(Runnable handler) {
+    m_handlers.add(handler);
+  }
+
+  /* RUNNABLES */
 
   /**
    * Runs the given Runnable whenever the BooleanEvent just becomes true.
@@ -101,43 +113,17 @@ public class BooleanEvent implements BooleanSupplier {
    * Constantly runs the given Runnable while the BooleanEvent is true.
    * 
    * <p>This method does not schedule any commands or deal with requirements. 
-   * @param during the Runnable to run while the BooleanEvent is true.
-   * @param after the Runnable to run when the BooleanEvent next becomes false.
-   * @return this BooleanEvent, so calls can be chained
-   */
-  public BooleanEvent whileTrue(final Runnable during, final Runnable after) {
-    requireNonNullParam(during, "during", "whileTrue");
-    requireNonNullParam(after, "after", "whileTrue");
-    CommandScheduler.getInstance().addButton(
-      new Runnable() {
-        private boolean m_stateLast = get();
-
-        @Override
-        public void run() {
-          boolean state = get();
-
-          if (state == true) {
-            during.run();
-          }
-          if (m_stateLast == true && state == false) {
-            after.run();
-          }
-
-          m_stateLast = state;
-        }
-      });
-    return this;
-  }
-
-    /**
-   * Constantly runs the given Runnable while the BooleanEvent is true.
-   * 
-   * <p>This method does not schedule any commands or deal with requirements. 
    * @param toRun the Runnable to run while the BooleanEvent is true.
    * @return this BooleanEvent, so calls can be chained
    */
-  public BooleanEvent whileTrue(final Runnable toRun) {
-    whileTrue(toRun, ()->{});
+  public BooleanEvent whileTrueContinuous(final Runnable toRun) {
+    addHandler(
+      () -> {
+        if(get() == true) {
+          toRun.run();
+        }
+      }
+    );
     return this;
   }
 
@@ -147,137 +133,28 @@ public class BooleanEvent implements BooleanSupplier {
    * @param handler the Consumer to run, which accepts the new state
    * @return this BooleanEvent, so calls can be chained
    */
-  public BooleanEvent onChange(Consumer<Boolean> handler) {
+  protected BooleanEvent onChange(Consumer<Boolean> handler) {
     requireNonNullParam(handler, "handle", "onChange");
-    CommandScheduler.getInstance()
-        .addButton(
-            new Runnable() {
-              private boolean m_stateLast = get();
+    addHandler(
+      new Runnable() {
+        private boolean m_stateLast = get();
 
-              @Override
-              public void run() {
-                boolean state = get();
+        @Override
+        public void run() {
+          boolean state = get();
 
-                if (m_stateLast != state) {
-                  handler.accept(state);
-                }
+          if (m_stateLast != state) {
+            handler.accept(state);
+          }
 
-                m_stateLast = state;
-              }
-            });
-    return this;
-  }
-
-  /* COMMANDS */
-
-  /**
-   * Starts the given command whenever the BooleanEvent becomes true. 
-   * 
-   * <p>The command is set to be interruptible, and will not be restarted if it ends.
-   *
-   * @param command the command to start
-   * @return this BooleanEvent, so calls can be chained
-   */
-  public BooleanEvent onTrue(final Command command) {
-    requireNonNullParam(command, "command", "onTrue");
-    onTrue(()->{
-      if (!command.isScheduled()) {
-        command.schedule();
+          m_stateLast = state;
+        }
       }
-    });
+    );
     return this;
   }
 
-  /**
-   * Runs the given command only while the BooleanEvent is true, restarting it if it ends.
-   *
-   * <p>{@link Command#schedule(boolean)} will be called to restart the command.
-   *
-   * @param command the command to start
-   * @return this BooleanEvent, so calls can be chained
-   */
-  public BooleanEvent whileTrueContinuous(final Command command) {
-    requireNonNullParam(command, "command", "whileTrue");
-    whileTrue(
-      ()->{
-        if (!command.isScheduled()) {
-          command.schedule();
-        }
-      },
-      ()->{
-        if (command.isScheduled()) {
-          command.cancel();
-        }
-      });
-    return this;
-  }
-
-    /**
-   * Starts the given command when the BooleanEvent becomes true, and cancels it when the BooleanEvent becomes false. 
-   * 
-   * <p>The command will not be restarted if it ends.
-   *
-   * @param command the command to start
-   * @return this BooleanEvent, so calls can be chained
-   */
-  public BooleanEvent whileTrueOnce(final Command command) {
-    requireNonNullParam(command, "command", "whileTrue");
-    onChange(
-      state -> {
-        if(state == true){
-          if (!command.isScheduled()) {
-            command.schedule();
-          }
-        }
-        else {
-          if (command.isScheduled()) {
-            command.cancel();
-          }
-        }
-      });
-    return this;
-  }
   
-  /**
-   * Toggles a command when the BooleanEvent becomes true.
-   * 
-   * <p>This method will cancel the command if it is running, or schedule it if it is not running.
-   *
-   * @param command the command to toggle
-   * @return this BooleanEvent, so calls can be chained
-   */
-  public BooleanEvent toggleOnTrue(final Command command) {
-    requireNonNullParam(command, "command", "toggleOnTrue");
-    onTrue(
-      ()->{
-        if (command.isScheduled()) {
-          command.cancel();
-        } else {
-          command.schedule();
-        }
-      }
-    );
-    return this;
-  }
-
-  /**
-   * Cancels a command when the BooleanEvent becomes true.
-   *
-   * @param command the command to cancel
-   * @return this BooleanEvent, so calls can be chained
-   */
-  public BooleanEvent cancelOnTrue(final Command command) {
-    requireNonNullParam(command, "command", "cancelOnTrue");
-    onTrue(
-      ()-> {
-        if (command.isScheduled()) {
-          command.cancel();
-        }
-      }
-    );
-    return this;
-  }
-
   /* COMPOSITION */
   
   /**
@@ -288,9 +165,12 @@ public class BooleanEvent implements BooleanSupplier {
    * @return the BooleanEvent that is true when both BooleanEvents are true
    */
   public BooleanEvent and(BooleanEvent eventListener) {
-    return new BooleanEvent(() -> get() && eventListener.get());
+    Collection<Runnable> handlers = m_handlers;
+    handlers.addAll(eventListener.m_handlers);
+    return new BooleanEvent(
+      () -> get() && eventListener.get(),
+      handlers);
   }
-
   /**
    * Composes this BooleanEvent with another BooleanEvent, returning a new BooleanEvent that is true when either
    * BooleanEvent is true.
@@ -299,12 +179,19 @@ public class BooleanEvent implements BooleanSupplier {
    * @return the BooleanEvent that is true when either BooleanEvent is true
    */
   public BooleanEvent or(BooleanEvent eventListener) {
-    return new BooleanEvent(() -> get() || eventListener.get());
+    Collection<Runnable> handlers = m_handlers;
+    handlers.addAll(eventListener.m_handlers);
+    return new BooleanEvent(
+      () -> get() || eventListener.get(),
+      handlers);
   }
 
   /**
    * Creates a new BooleanEvent that is true when this BooleanEvent is false, i.e. that acts as the
    * negation of this BooleanEvent.
+   * 
+   * <p>IMPORTANT: the bindings from the BooleanEvent being negated will not be copied,
+   * to avoid actions being bound to the negation of their intended condition
    *
    * @return the negated BooleanEvent
    */
@@ -340,6 +227,7 @@ public class BooleanEvent implements BooleanSupplier {
           public boolean getAsBoolean() {
             return m_debouncer.calculate(get());
           }
-        });
+        },
+        m_handlers);
   }
 }
