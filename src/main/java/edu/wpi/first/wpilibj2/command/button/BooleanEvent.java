@@ -89,6 +89,13 @@ public class BooleanEvent implements BooleanSupplier {
     m_handlers.add(handler);
   }
 
+  /**
+   * Removes all bindings from this BooleanEvent.
+   */
+  public void clearBindings() {
+    m_handlers.clear();
+  }
+
   /* RUNNABLES */
 
   /**

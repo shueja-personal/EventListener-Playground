@@ -43,8 +43,19 @@ public class CommandBooleanEvent extends BooleanEvent {
     super();
   }
 
+
   protected CommandBooleanEvent(BooleanSupplier eventSupplier, Collection<Runnable> handlers) {
     super(eventSupplier, handlers);
+  }
+
+  /**
+   * Removes all bindings from this BooleanEvent.
+   * 
+   * <p> NOTE: If the bindings are cleared while the event is true,
+   * any commands set to run `whileTrue` will not be canceled when the event becomes false. 
+   */
+  public void clearBindings(){
+    super.clearBindings();
   }
 
   /**
